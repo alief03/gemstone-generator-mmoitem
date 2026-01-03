@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>💎 Gemstone Generator – Displayname & Roman Numeral</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+:root{
+  --bg:#020617;
+  --panel:#061226;
+  --border:#13202a;
+  --accent:#06b6d4;
+  --accent-2:#38bdf8;
+  --muted:#94a3b8;
+  --card:#07101a;
+  --input-bg: rgba(255,255,255,0.02);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:#e6eef8;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+}
+.container{max-width:1200px;margin:18px auto;padding:18px}
+.panel{
+  background:linear-gradient(180deg,var(--panel), #04101a);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.5);
+}
+h1{margin:0 0 12px;font-size:22px}
+.section{font-weight:700;display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.section small{color:var(--muted);font-weight:600;flex:1;border-bottom:1px solid var(--border);height:1px;align-self:center}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+input[type="text"], input[type="number"], select, textarea{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:inherit;
+  font-size:14px;
+}
+textarea{min-height:300px;font-family:monospace}
+button{cursor:pointer}
+button.primary{
+  padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-2),#22d3ee);color:#022023;font-weight:700;
+}
+.helper{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* checklist area */
+.check-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.check-toolbar .spacer{flex:1}
+.check-panel{
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px;
+  background:var(--card);
+  max-height:520px;
+  overflow:auto;
+}
+.search{display:flex;gap:8px;align-items:center;width:100%;max-width:520px}
+.search input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid #1e293b;background:transparent;color:inherit}
+
+/* group */
+.check-group{margin-bottom:12px;}
+.check-group.collapsed .check-group-body{display:none}
+.check-group-header{
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid rgba(255,255,255,0.02);border-radius:8px;
+}
+.group-left{display:flex;align-items:center;gap:12px}
+.group-title{color:#cfeffd;font-weight:700}
+.group-controls{display:flex;gap:8px;align-items:center;position:relative}
+
+/* menu button */
+.menu-btn{
+  padding:8px 10px;border-radius:8px;border:none;background:var(--accent);color:#022023;font-weight:600;position:relative;
+}
+
+/* body menu */
+.body-menu {
+  position:absolute;
+  background:linear-gradient(180deg,var(--panel), #05131a);
+  border:1px solid var(--border);
+  border-radius:8px;
+  min-width:160px;
+  z-index:9999;
+  box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  overflow:hidden;
+}
+.body-menu button{
+  display:block;
+  width:100%;
+  text-align:left;
+  padding:10px;
+  border:none;
+  background:transparent;
+  color:#e6eef8;
+  font-size:14px;
+}
+.body-menu button:hover{background:rgba(255,255,255,0.02)}
+
+/* body */
+.check-group-body{padding:10px;background:transparent}
+.check-grid{display:grid;grid-template-columns:24px 1fr 64px;gap:8px 12px;align-items:center}
+.checkbox input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent-2);cursor:pointer}
+.attr-name{font-family:monospace;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attr-lock{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.lock-cbx{width:16px;height:16px}
+.substats{margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01)}
+.substats h5{margin:0 0 6px;font-size:13px;color:var(--muted)}
+.substats-grid{display:flex;gap:8px;flex-wrap:wrap}
+.substats-grid label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+
+/* enchant config inside group */
+.enchant-config{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.enchant-config label{font-size:13px;color:var(--muted);margin:0}
+.enchant-config input[type="number"]{width:110px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit}
+
+/* perm config */
+.perm-config{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+
+/* small tweaks */
+.small-note{font-size:12px;color:var(--muted)}
+@media (max-width:720px){.check-grid{grid-template-columns:22px 1fr 56px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>💎 Gemstone Generator</h1>
+
+  <!-- BASIC -->
+  <div class="panel">
+    <div class="section"><div>Basic Configuration</div><small>isi field berikut</small></div>
+    <div class="grid">
+      <div>
+        <label for="material">Material</label>
+        <input id="material" value="EMERALD" type="text" />
+        <div class="small-note">Material item Minecraft (EMERALD, DIAMOND, dll)</div>
+      </div>
+
+      <div>
+        <label for="gemColor">Gem Color (gem-color)</label>
+        <input id="gemColor" placeholder="Blue / Heroic" type="text" />
+        <div class="small-note">Nilai akan ditulis ke 'gem-color' di output</div>
+      </div>
+
+      <div>
+        <label for="amount">Jumlah Gemstone</label>
+        <input id="amount" type="number" value="1" min="1" />
+      </div>
+
+      <div>
+        <label for="slots">Slot Stat (max 95)</label>
+        <input id="slots" type="number" value="5" min="1" max="95" />
+        <div class="small-note">Slot = total hasil (attr + element + enchant + perm)</div>
+      </div>
+
+      <div>
+        <label for="cmd">Custom Model Data</label>
+        <input id="cmd" type="number" placeholder="Opsional" />
+      </div>
+
+      <!-- Displayname controls -->
+      <div>
+        <label for="displayColor">Display Color Code (chat code)</label>
+        <input id="displayColor" type="text" value="&amp;b" placeholder="e.g. &amp;b, &ampc, &amp6" />
+        <div class="small-note">Masukkan kode chat Minecraft (gunakan &amp; sebelum kode, contoh: &amp;b)</div>
+      </div>
+
+      <div>
+        <label for="displayText">Display Text (without roman)</label>
+        <input id="displayText" type="text" value="Gemstone" placeholder="Teks dasar displayname" />
+        <div class="small-note">Contoh: "Gemstone" → hasil: &amp;bGemstone I</div>
+      </div>
+
+      <div style="align-self:center;">
+        <label style="display:flex;align-items:center;gap:8px"><input id="displayRoman" type="checkbox" checked/> Append Roman Numeral</label>
+        <div class="small-note">Jika dicentang, otomatis menambahkan I, II, III ...</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px"><input id="disableCraft" type="checkbox" checked/> disable-crafting</label>
+      <label style="display:flex;align-items:center;gap:8px"><input id="disableSmelt" type="checkbox" checked/> disable-smelting</label>
+      <label style="display:flex;align-items:center;gap:8px"><input id="disableSmith" type="checkbox" checked/> disable-smithing</label>
+      <label style="display:flex;align-items:center;gap:8px"><input id="disableEnchant" type="checkbox" checked/> disable-enchanting</label>
+      <label style="display:flex;align-items:center;gap:8px"><input id="disableRepair" type="checkbox" checked/> disable-repairing</label>
+    </div>
+
+    <!-- Success rate configuration -->
+    <div style="margin-top:12px">
+      <label style="font-weight:700">Success Rate Configuration</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px">Mode:
+          <select id="successMode" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit;margin-left:8px">
+            <option value="fixed">Fixed</option>
+            <option value="minmax">Min — Max</option>
+          </select>
+        </label>
+        <label id="lblSuccessFixed">Value: <input id="successFixed" type="number" value="50" min="0" max="100" style="margin-left:6px;width:90px"/>%</label>
+        <label id="lblSuccessMin" style="display:none">Min: <input id="successMin" type="number" value="40" min="0" max="100" style="margin-left:6px;width:90px"/>%</label>
+        <label id="lblSuccessMax" style="display:none">Max: <input id="successMax" type="number" value="60" min="0" max="100" style="margin-left:6px;width:90px"/>%</label>
+      </div>
+      <div class="small-note">Pilih Fixed atau Min–Max. Nilai ditulis ke output sebagai 'success-rate'.</div>
+    </div>
+
+  </div>
+
+  <!-- CHECKLIST -->
+  <div class="panel">
+    <div class="section"><div>Attribute / Element / Enchant / Perm Effects Selection</div><small>Pilih apa saja yang boleh muncul (ceklist)</small></div>
+
+    <div class="check-toolbar">
+      <div class="search">
+        <input id="searchInput" placeholder="Search attribute / element / enchant / perm..." />
+      </div>
+      <div class="spacer"></div>
+      <button id="btnSelectAll">Select All</button>
+      <button id="btnClearAll">Clear</button>
+      <div id="globalCounter" class="small-note">0 selected</div>
+    </div>
+
+    <div id="checkPanel" class="check-panel" aria-live="polite"></div>
+  </div>
+
+  <!-- TIER -->
+  <div class="panel">
+    <div class="section"><div>Tier Configuration</div><small>Pilih preset tier atau Custom</small></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <label style="margin:0"><input id="presetToggle" type="radio" name="tierMode" checked/> Preset</label>
+      <label style="margin:0"><input id="customToggle" type="radio" name="tierMode" /> Custom</label>
+    </div>
+
+    <div id="presetPanel" style="margin-top:10px">
+      <div class="grid">
+        <div>
+          <label>Preset Tier</label>
+          <select id="tierSelect">
+            <option value="1">Tier 1</option>
+            <option value="2">Tier 2</option>
+            <option value="3">Tier 3</option>
+            <option value="4">Tier 4</option>
+          </select>
+          <div id="tierInfo" class="small-note">Base/Scale/Spread info akan tampil disini</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="customPanel" style="display:none;margin-top:10px">
+      <div class="grid">
+        <div>
+          <label>Base Min</label>
+          <input id="baseMin" type="number" value="5" />
+        </div>
+        <div>
+          <label>Base Max</label>
+          <input id="baseMax" type="number" value="15" />
+        </div>
+        <div>
+          <label>Scale Min</label>
+          <input id="scaleMin" type="number" step="0.1" value="0.8" />
+        </div>
+        <div>
+          <label>Scale Max</label>
+          <input id="scaleMax" type="number" step="0.1" value="1.5" />
+        </div>
+        <div>
+          <label>Spread</label>
+          <input id="spread" type="number" step="0.01" value="0.05" />
+        </div>
+        <div>
+          <label>Max Spread</label>
+          <input id="maxSpread" type="number" step="0.01" value="0.25" />
+        </div>
+      </div>
+      <div class="small-note" style="margin-top:8px">Jika Custom aktif, sistem akan memakai rentang yang diisi.</div>
+    </div>
+    <div style="margin-top:12px">
+      <button id="generateBtn" class="primary">Generate</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="panel">
+    <div class="section"><div>Preview</div><small>Preview dapat diedit sebelum download</small></div>
+    <textarea id="preview"></textarea>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <button id="downloadBtn">Download TXT</button>
+      <div style="margin-left:auto" class="small-note">Output: YAML-like (lihat sample)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= DATA ================= */
+const ATTRIBUTE_GROUPS = {
+  Damage: [
+    "attack-damage","attack-speed","critical-strike-chance","critical-strike-power",
+    "skill-critical-strike-chance","skill-critical-strike-power","pve-damage",
+    "weapon-damage","skill-damage","projectile-damage","magic-damage",
+    "physical-damage","undead-damage","lifesteal","spell-vampirism",
+    "blunt-power","blunt-rating"
+  ],
+  Defense: [
+    "defense","damage-reduction","fall-damage-reduction",
+    "projectile-damage-reduction","physical-damage-reduction",
+    "fire-damage-reduction","magic-damage-reduction","pve-damage-reduction",
+    "armor","armor-toughness","max-health","max-absorption",
+    "knockback-resistance","block-power","block-rating",
+    "block-cooldown-reduction","parry-rating","parry-cooldown-reduction",
+    "dodge-rating","dodge-cooldown-reduction"
+  ],
+  Utility: [
+    "cooldown-reduction","range","arrow-velocity","movement-speed","max-mana",
+    "block-break-speed","block-interaction-range","entity-interaction-range",
+    "fall-damage-multiplier","gravity","jump-strength","safe-fall-distance",
+    "burning-time","explosion-knockback-resistance","mining-efficiency",
+    "movement-efficiency","oxygen-bonus","sneaking-speed",
+    "submerged-mining-speed","sweeping-damage-ratio","water-movement-efficiency",
+    "custom-myluck","additional-strength","additional-health",
+    "additional-regeneration","additional-luck","additional-wisdom",
+    "additional-toughness","additional-crit-chance",
+    "additional-crit-damage","additional-speed"
+  ],
+  Element: [
+    "element-wind","element-earth","element-fire","element-ice",
+    "element-darkness","element-thunder","element-water","element-lightness"
+  ],
+  Enchantment: [
+    "mending","unbreaking","efficiency","fortune","silk-touch","sharpness",
+    "smite","bane-of-arthropods","fire-aspect","knockback","looting",
+    "protection","feather-falling","projectile-protection","respiration",
+    "aqua-affinity","thorns","depth-strider","frost-walker"
+  ],
+  "Perm-Effects": [
+    "ABSORPTION","BAD_OMEN","CONDUIT_POWER","DOLPHINS_GRACE","FIRE_RESISTANCE",
+    "GLOWING","HASTE","HEALTH_BOOST","HERO_OF_THE_VILLAGE","INSTANT_HEALTH",
+    "JUMP_BOOST","LUCK","NIGHT_VISION","REGENERATION","RESISTANCE",
+    "SATURATION","SLOW_FALLING","SPEED","STRENGTH","WATER_BREATHING","HEAL"
+  ]
+};
+
+const PRESET_TIERS = {
+  1:{b:[5,15],s:[0.8,1.5],sp:0.05,m:0.25},
+  2:{b:[16,30],s:[1.5,2.2],sp:0.07,m:0.30},
+  3:{b:[31,50],s:[2.2,3.0],sp:0.08,m:0.35},
+  4:{b:[51,80],s:[3.0,4.0],sp:0.10,m:0.40}
+};
+
+const ELEMENT_SUB = ["damage","damage-percent","weakness","defense","defense-percent"];
+const rand = (a,b)=>+(Math.random()*(b-a)+a).toFixed(2);
+
+/* convert integer to Roman (supports up to 3999) */
+function intToRoman(num){
+  if(num <= 0) return "";
+  const vals = [
+    [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
+    [100,'C'],[90,'XC'],[50,'L'],[40,'XL'],
+    [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
+  ];
+  let res = "";
+  let n = num;
+  for(const [v, sym] of vals){
+    while(n >= v){ res += sym; n -= v; }
+  }
+  return res;
+}
+
+/* DOM refs */
+const checkPanel = document.getElementById("checkPanel");
+const searchInput = document.getElementById("searchInput");
+const btnSelectAll = document.getElementById("btnSelectAll");
+const btnClearAll = document.getElementById("btnClearAll");
+const globalCounter = document.getElementById("globalCounter");
+
+const presetToggle = document.getElementById("presetToggle");
+const customToggle = document.getElementById("customToggle");
+const presetPanel = document.getElementById("presetPanel");
+const customPanel = document.getElementById("customPanel");
+const tierSelect = document.getElementById("tierSelect");
+const tierInfo = document.getElementById("tierInfo");
+
+const baseMin = document.getElementById("baseMin");
+const baseMax = document.getElementById("baseMax");
+const scaleMin = document.getElementById("scaleMin");
+const scaleMax = document.getElementById("scaleMax");
+const spread = document.getElementById("spread");
+const maxSpread = document.getElementById("maxSpread");
+
+const slotsInput = document.getElementById("slots");
+const materialInput = document.getElementById("material");
+const gemColorInput = document.getElementById("gemColor");
+const amountInput = document.getElementById("amount");
+const cmdInput = document.getElementById("cmd");
+const preview = document.getElementById("preview");
+
+const displayColorInput = document.getElementById("displayColor");
+const displayTextInput = document.getElementById("displayText");
+const displayRomanChk = document.getElementById("displayRoman");
+
+const genBtn = document.getElementById("generateBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+
+const disableCraft = document.getElementById("disableCraft");
+const disableSmelt = document.getElementById("disableSmelt");
+const disableSmith = document.getElementById("disableSmith");
+const disableEnchant = document.getElementById("disableEnchant");
+const disableRepair = document.getElementById("disableRepair");
+
+// success rate controls
+const successMode = document.getElementById('successMode');
+const successFixed = document.getElementById('successFixed');
+const successMin = document.getElementById('successMin');
+const successMax = document.getElementById('successMax');
+const lblSuccessFixed = document.getElementById('lblSuccessFixed');
+const lblSuccessMin = document.getElementById('lblSuccessMin');
+const lblSuccessMax = document.getElementById('lblSuccessMax');
+
+/* ================= RENDER GROUPS (menu appended to body to avoid clipping) */
+function createMenuButton(){
+  const btn = document.createElement("button");
+  btn.className = "menu-btn";
+  btn.type = "button";
+  btn.textContent = "⋯";
+  return btn;
+}
+
+function buildGroupDom(title, list, prefix){
+  const group = document.createElement("div");
+  group.className = "check-group";
+
+  const header = document.createElement("div");
+  header.className = "check-group-header";
+
+  const left = document.createElement("div");
+  left.className = "group-left";
+  const titleNode = document.createElement("div");
+  titleNode.className = "group-title";
+  titleNode.textContent = `${title} (${list.length})`;
+  left.appendChild(titleNode);
+
+  header.appendChild(left);
+
+  const controls = document.createElement("div");
+  controls.className = "group-controls";
+
+  const btn = createMenuButton();
+  controls.appendChild(btn);
+
+  btn.addEventListener('click', (ev)=>{
+    ev.stopPropagation();
+    openBodyMenuForButton(btn, group);
+  });
+
+  header.appendChild(controls);
+
+  header.addEventListener('click', (e)=>{
+    // click header toggles collapse (but menu button has its own handler)
+    if(e.target === btn) return;
+    group.classList.toggle('collapsed');
+  });
+
+  group.appendChild(header);
+
+  const body = document.createElement("div");
+  body.className = "check-group-body";
+
+  const grid = document.createElement("div");
+  grid.className = "check-grid";
+
+  list.forEach(key=>{
+    const cbCell = document.createElement("div");
+    cbCell.className = "checkbox";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = true;
+    cb.className = "attr-cbx";
+    cb.dataset.key = key;
+    cb.dataset.type = prefix;
+    cbCell.appendChild(cb);
+
+    const nameCell = document.createElement("div");
+    nameCell.className = "attr-name";
+    nameCell.textContent = key;
+
+    const lockCell = document.createElement("div");
+    lockCell.className = "attr-lock";
+    const lockLabel = document.createElement("label");
+    lockLabel.style.fontSize = "12px";
+    const lockCb = document.createElement("input");
+    lockCb.type = "checkbox";
+    lockCb.className = "lock-cbx";
+    lockCb.dataset.lock = key;
+    lockLabel.appendChild(lockCb);
+    lockLabel.appendChild(document.createTextNode("lock"));
+    lockCell.appendChild(lockLabel);
+
+    grid.appendChild(cbCell);
+    grid.appendChild(nameCell);
+    grid.appendChild(lockCell);
+
+    // element has sub-attributes
+    if(prefix === "element"){
+      const subBlock = document.createElement("div");
+      subBlock.className = "substats";
+      const elName = key.replace(/^element-/, "");
+      const h5 = document.createElement("h5");
+      h5.textContent = `Sub-attributes for ${elName} (optional)`;
+      subBlock.appendChild(h5);
+
+      const subGrid = document.createElement("div");
+      subGrid.className = "substats-grid";
+
+      ELEMENT_SUB.forEach(sub=>{
+        const lbl = document.createElement("label");
+        const sCb = document.createElement("input");
+        sCb.type = "checkbox";
+        sCb.checked = true;
+        sCb.className = "sub-cbx";
+        sCb.dataset.el = key;
+        sCb.dataset.sub = sub;
+        lbl.appendChild(sCb);
+        lbl.appendChild(document.createTextNode(sub));
+        subGrid.appendChild(lbl);
+      });
+
+      subBlock.appendChild(subGrid);
+      const subWrapper = document.createElement("div");
+      subWrapper.style.gridColumn = "1 / -1";
+      subWrapper.appendChild(subBlock);
+      grid.appendChild(subWrapper);
+    }
+  });
+
+  body.appendChild(grid);
+
+  if(prefix === "enchantment"){
+    const cfg = document.createElement("div");
+    cfg.className = "enchant-config";
+    cfg.innerHTML = `
+      <label style="display:flex;align-items:center;gap:8px"><input id="enchantToggleInline" type="checkbox" checked /> Enable Enchantments</label>
+      <label style="display:flex;align-items:center;gap:8px">Mode:
+        <select id="enchantModeInline" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit">
+          <option value="fixed">Fixed Level</option>
+          <option value="minmax">Min — Max</option>
+        </select>
+      </label>
+      <label id="lblFixedInline">Level: <input id="enchantFixedInline" type="number" value="1" min="1" style="margin-left:6px;width:70px"/></label>
+      <label id="lblMinInline" style="display:none">Min: <input id="enchantMinInline" type="number" value="1" min="1" style="margin-left:6px;width:70px"/></label>
+      <label id="lblMaxInline" style="display:none">Max: <input id="enchantMaxInline" type="number" value="3" min="1" style="margin-left:6px;width:70px"/></label>
+    `;
+    body.appendChild(cfg);
+  }
+
+  if(prefix === "perm"){
+    const pcfg = document.createElement("div");
+    pcfg.className = "perm-config";
+    pcfg.innerHTML = `
+      <label style="display:flex;align-items:center;gap:8px"><input id="permToggleInline" type="checkbox" checked /> Enable Perm Effects</label>
+      <label style="display:flex;align-items:center;gap:8px">Mode:
+        <select id="permModeInline" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:inherit">
+          <option value="fixed">Fixed</option>
+          <option value="minmax">Min — Max</option>
+        </select>
+      </label>
+      <label id="lblPermFixed">Value: <input id="permFixedInline" type="number" value="1" min="0" style="margin-left:6px;width:70px"/></label>
+      <label id="lblPermMin" style="display:none">Min: <input id="permMinInline" type="number" value="1" min="0" style="margin-left:6px;width:70px"/></label>
+      <label id="lblPermMax" style="display:none">Max: <input id="permMaxInline" type="number" value="5" min="0" style="margin-left:6px;width:70px"/></label>
+    `;
+    body.appendChild(pcfg);
+  }
+
+  group.appendChild(body);
+  return group;
+}
+
+function openBodyMenuForButton(btn, group){
+  document.querySelectorAll('.body-menu').forEach(m=>m.remove());
+  const menu = document.createElement('div');
+  menu.className = 'body-menu';
+  menu.innerHTML = `
+    <button data-action="expand">Expand</button>
+    <button data-action="collapse">Collapse</button>
+    <button data-action="select">Select group</button>
+    <button data-action="clear">Clear group</button>
+  `;
+  document.body.appendChild(menu);
+
+  const rect = btn.getBoundingClientRect();
+  const menuWidth = 180;
+  let left = rect.left + window.scrollX;
+  if(left + menuWidth > window.scrollX + window.innerWidth) {
+    left = (window.scrollX + window.innerWidth) - menuWidth - 12;
+  }
+  let top = rect.bottom + window.scrollY + 6;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.minWidth = menuWidth + 'px';
+
+  menu.addEventListener('click', (e)=>{
+    const action = e.target.dataset.action;
+    if(!action) return;
+    if(action === 'expand') group.classList.remove('collapsed');
+    if(action === 'collapse') group.classList.add('collapsed');
+    if(action === 'select') group.querySelectorAll('input.attr-cbx').forEach(cb=>cb.checked=true);
+    if(action === 'clear') group.querySelectorAll('input.attr-cbx').forEach(cb=>cb.checked=false);
+    menu.remove();
+    updateGlobalCounter();
+  });
+
+  setTimeout(()=>{
+    const closeFn = (ev)=>{
+      if(!menu.contains(ev.target) && ev.target !== btn) {
+        menu.remove(); document.removeEventListener('click', closeFn);
+      }
+    };
+    document.addEventListener('click', closeFn);
+  }, 0);
+}
+
+function renderChecklist(filter=""){
+  checkPanel.innerHTML = "";
+  ["Damage","Defense","Utility","Element","Enchantment","Perm-Effects"].forEach(groupName=>{
+    const list = (ATTRIBUTE_GROUPS[groupName] || []).filter(k=>k.toLowerCase().includes(filter.toLowerCase()));
+    if(list.length === 0) return;
+    const dom = buildGroupDom(groupName, list, groupName === "Perm-Effects" ? "perm" : groupName.toLowerCase());
+    if(groupName !== "Damage") dom.classList.add("collapsed");
+    checkPanel.appendChild(dom);
+  });
+  wireEnchantInline();
+  wirePermInline();
+  updateGlobalCounter();
+}
+
+function wireEnchantInline(){
+  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
+    const t = dom.querySelector('.group-title');
+    return t && t.textContent && t.textContent.startsWith("Enchantment");
+  });
+  if(!g) return;
+  const toggle = g.querySelector('#enchantToggleInline');
+  const modeSel = g.querySelector('#enchantModeInline');
+  const fixedInp = g.querySelector('#enchantFixedInline');
+  const minInp = g.querySelector('#enchantMinInline');
+  const maxInp = g.querySelector('#enchantMaxInline');
+  const lblFixed = g.querySelector('#lblFixedInline');
+  const lblMin = g.querySelector('#lblMinInline');
+  const lblMax = g.querySelector('#lblMaxInline');
+
+  function update(){
+    const enabled = !!toggle.checked;
+    g.querySelectorAll('input.attr-cbx').forEach(cb=>{
+      cb.disabled = !enabled;
+    });
+    g.style.opacity = enabled ? '1' : '0.55';
+    if(modeSel.value === 'fixed'){
+      lblFixed.style.display = '';
+      lblMin.style.display = 'none';
+      lblMax.style.display = 'none';
+    } else {
+      lblFixed.style.display = 'none';
+      lblMin.style.display = '';
+      lblMax.style.display = '';
+    }
+    fixedInp.disabled = !enabled;
+    minInp.disabled = !enabled;
+    maxInp.disabled = !enabled;
+    modeSel.disabled = !enabled;
+    updateGlobalCounter();
+  }
+
+  toggle.addEventListener('change', update);
+  modeSel.addEventListener('change', update);
+  update();
+}
+
+function wirePermInline(){
+  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
+    const t = dom.querySelector('.group-title');
+    return t && t.textContent && t.textContent.startsWith("Perm-Effects");
+  });
+  if(!g) return;
+  const toggle = g.querySelector('#permToggleInline');
+  const modeSel = g.querySelector('#permModeInline');
+  const fixedInp = g.querySelector('#permFixedInline');
+  const minInp = g.querySelector('#permMinInline');
+  const maxInp = g.querySelector('#permMaxInline');
+  const lblFixed = g.querySelector('#lblPermFixed');
+  const lblMin = g.querySelector('#lblPermMin');
+  const lblMax = g.querySelector('#lblPermMax');
+
+  function update(){
+    const enabled = !!toggle.checked;
+    g.querySelectorAll('input.attr-cbx').forEach(cb=>{
+      cb.disabled = !enabled;
+    });
+    g.style.opacity = enabled ? '1' : '0.55';
+    if(modeSel.value === 'fixed'){
+      lblFixed.style.display = '';
+      lblMin.style.display = 'none';
+      lblMax.style.display = 'none';
+    } else {
+      lblFixed.style.display = 'none';
+      lblMin.style.display = '';
+      lblMax.style.display = '';
+    }
+    fixedInp.disabled = !enabled;
+    minInp.disabled = !enabled;
+    maxInp.disabled = !enabled;
+    modeSel.disabled = !enabled;
+    updateGlobalCounter();
+  }
+
+  toggle.addEventListener('change', update);
+  modeSel.addEventListener('change', update);
+  update();
+}
+
+/* ================= COUNTER & BUTTONS ================= */
+function updateGlobalCounter(){
+  const totalSelectable = document.querySelectorAll('#checkPanel input.attr-cbx').length || 0;
+  const totalChecked = document.querySelectorAll('#checkPanel input.attr-cbx:checked').length || 0;
+  globalCounter.textContent = `${totalChecked} / ${totalSelectable} selected`;
+}
+document.addEventListener("change", updateGlobalCounter);
+
+btnSelectAll.addEventListener("click", ()=>{
+  document.querySelectorAll('#checkPanel input.attr-cbx').forEach(cb=> { cb.checked = true; cb.disabled = false; });
+  updateGlobalCounter();
+});
+btnClearAll.addEventListener("click", ()=>{
+  document.querySelectorAll('#checkPanel input.attr-cbx').forEach(cb=>cb.checked=false);
+  document.querySelectorAll('#checkPanel input.lock-cbx').forEach(cb=>cb.checked=false);
+  updateGlobalCounter();
+});
+
+searchInput.addEventListener("input", ()=> renderChecklist(searchInput.value));
+
+/* ================= Tier UI ================= */
+function toggleTierMode(){
+  if(customToggle.checked){
+    presetPanel.style.display = 'none';
+    customPanel.style.display = '';
+  } else {
+    presetPanel.style.display = '';
+    customPanel.style.display = 'none';
+  }
+}
+presetToggle.addEventListener('change', toggleTierMode);
+customToggle.addEventListener('change', toggleTierMode);
+
+function renderTierInfo(){
+  const t = PRESET_TIERS[tierSelect.value];
+  tierInfo.textContent = `Preset Tier ${tierSelect.value} → Base ${t.b[0]}–${t.b[1]} | Scale ${t.s[0]}–${t.s[1]} | Spread ${t.sp} | Max ${t.m}`;
+}
+tierSelect.addEventListener("change", renderTierInfo);
+renderTierInfo();
+
+/* success rate UI wiring */
+successMode.addEventListener('change', ()=>{
+  if(successMode.value === 'fixed'){
+    lblSuccessFixed.style.display = '';
+    lblSuccessMin.style.display = 'none';
+    lblSuccessMax.style.display = 'none';
+  } else {
+    lblSuccessFixed.style.display = 'none';
+    lblSuccessMin.style.display = '';
+    lblSuccessMax.style.display = '';
+  }
+});
+
+/* ================= GENERATE (perms config + success rate + displayname) ================= */
+function getSelectedPool(){
+  const items = [];
+  document.querySelectorAll('#checkPanel .check-group').forEach(group=>{
+    group.querySelectorAll('input.attr-cbx').forEach(cb=>{
+      const key = cb.dataset.key;
+      const type = cb.dataset.type;
+      const lockCb = group.querySelector(`input.lock-cbx[data-lock="${key}"]`);
+      const locked = lockCb ? lockCb.checked : false;
+      if(cb.checked) items.push({type, key, locked});
+    });
+  });
+  return items;
+}
+
+function readEnchantConfigInline(){
+  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
+    const t = dom.querySelector('.group-title');
+    return t && t.textContent && t.textContent.startsWith("Enchantment");
+  });
+  if(!g) return {enabled:false};
+  const toggle = g.querySelector('#enchantToggleInline');
+  if(!toggle) return {enabled:false};
+  const enabled = !!toggle.checked;
+  const mode = g.querySelector('#enchantModeInline').value;
+  const fixed = parseInt(g.querySelector('#enchantFixedInline').value || 1);
+  const min = parseInt(g.querySelector('#enchantMinInline').value || 1);
+  const max = parseInt(g.querySelector('#enchantMaxInline').value || min);
+  return {enabled, mode, fixed, min, max};
+}
+
+function readPermConfigInline(){
+  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
+    const t = dom.querySelector('.group-title');
+    return t && t.textContent && t.textContent.startsWith("Perm-Effects");
+  });
+  if(!g) return {enabled:false};
+  const toggle = g.querySelector('#permToggleInline');
+  if(!toggle) return {enabled:false};
+  const enabled = !!toggle.checked;
+  const mode = g.querySelector('#permModeInline').value;
+  const fixed = parseFloat(g.querySelector('#permFixedInline').value || 1);
+  const min = parseFloat(g.querySelector('#permMinInline').value || 1);
+  const max = parseFloat(g.querySelector('#permMaxInline').value || min);
+  return {enabled, mode, fixed, min, max};
+}
+
+function getSuccessRateValue(){
+  if(successMode.value === 'fixed'){
+    return parseFloat(successFixed.value || 0);
+  } else {
+    const lo = parseFloat(successMin.value || 0);
+    const hi = parseFloat(successMax.value || lo);
+    return +(Math.random()*(hi-lo)+lo).toFixed(2);
+  }
+}
+
+genBtn.addEventListener("click", ()=>{
+  // select tier ranges
+  let tierRange;
+  if(customToggle.checked){
+    const bmin = Math.max(0, parseFloat(baseMin.value || 0));
+    const bmax = Math.max(bmin, parseFloat(baseMax.value || bmin));
+    const smin = Math.max(0, parseFloat(scaleMin.value || 0));
+    const smax = Math.max(smin, parseFloat(scaleMax.value || smin));
+    const sp = Math.max(0, parseFloat(spread.value || 0));
+    const ms = Math.max(0, parseFloat(maxSpread.value || 0));
+    tierRange = {b:[bmin,bmax], s:[smin,smax], sp, m:ms};
+  } else {
+    tierRange = PRESET_TIERS[tierSelect.value];
+  }
+
+  const selectedPool = getSelectedPool();
+  const locked = selectedPool.filter(x=>x.locked);
+  const unlocked = selectedPool.filter(x=>!x.locked);
+
+  const totalSlots = Math.max(1, Math.min(95, parseInt(slotsInput.value || 5)));
+  const outLines = [];
+  const rawColor = (gemColorInput.value || "Gem").trim();
+  const gm = rawColor ? rawColor.replace(/\s+/g,'_') : "Gem";
+  const mat = materialInput.value || "EMERALD";
+  const model = cmdInput.value ? parseInt(cmdInput.value) : null;
+  const count = Math.max(1, parseInt(amountInput.value || 1));
+
+  const enchantCfg = readEnchantConfigInline();
+  const permCfg = readPermConfigInline();
+
+  // disable flags from basic UI
+  const df_craft = !!disableCraft.checked;
+  const df_smelt = !!disableSmelt.checked;
+  const df_smith = !!disableSmith.checked;
+  const df_enchant = !!disableEnchant.checked;
+  const df_repair = !!disableRepair.checked;
+
+  // displayname configuration
+  const displayColorRaw = (displayColorInput.value || "").trim(); // ex: &b
+  const displayBaseText = (displayTextInput.value || "").trim() || rawColor + " Gemstone";
+  const appendRoman = !!displayRomanChk.checked;
+
+  for(let i=1;i<=count;i++){
+    outLines.push(`${gm}_Gemstone_${i}:`);
+    outLines.push(`  material: ${mat}`);
+
+    // displayname (separate from internal id)
+    const roman = appendRoman ? " " + intToRoman(i) : "";
+    // if user prefixed displayColor with &, keep as-is
+    const displaynameStr = `${displayColorRaw}${displayBaseText}${roman}`.trim();
+    if(displaynameStr) outLines.push(`  displayname: ${displaynameStr}`);
+
+    // gem-color (write original user input)
+    if(gemColorInput.value && gemColorInput.value.trim() !== "") {
+      outLines.push(`  gem-color: ${gemColorInput.value.trim()}`);
+    }
+
+    // custom model data
+    if(model) outLines.push(`  custom-model-data: ${model}`);
+
+    // disable flags
+    outLines.push(`  disable-crafting: ${df_craft}`);
+    outLines.push(`  disable-smelting: ${df_smelt}`);
+    outLines.push(`  disable-smithing: ${df_smith}`);
+    outLines.push(`  disable-enchanting: ${df_enchant}`);
+    outLines.push(`  disable-repairing: ${df_repair}`);
+
+    // success rate (fixed or random per-gem)
+    const successVal = getSuccessRateValue();
+    outLines.push(`  success-rate: ${+successVal.toFixed(2)}`);
+
+    // choose items: locked prioritized
+    const chosen = [];
+    const used = new Set();
+
+    for(const L of locked){
+      if(chosen.length >= totalSlots) break;
+      if(!used.has(L.key)){
+        chosen.push(L);
+        used.add(L.key);
+      }
+    }
+
+    for(let j = unlocked.length -1; j>0; j--){
+      const k = Math.floor(Math.random()*(j+1));
+      [unlocked[j], unlocked[k]] = [unlocked[k], unlocked[j]];
+    }
+    for(const U of unlocked){
+      if(chosen.length >= totalSlots) break;
+      if(!used.has(U.key)){
+        chosen.push(U);
+        used.add(U.key);
+      }
+    }
+
+    const enchMap = {};
+    const permMap = {};
+
+    for(const item of chosen){
+      if(item.type === "element"){
+        const subs = [...document.querySelectorAll(`#checkPanel input.sub-cbx[data-el="${item.key}"]`)]
+                      .filter(s=>s.checked).map(s=>s.dataset.sub);
+        const poolSub = subs.length ? subs : ELEMENT_SUB.slice();
+        const pick = poolSub[Math.floor(Math.random()*poolSub.length)];
+        const val = rand(...tierRange.b);
+        outLines.push(`  element:`);
+        outLines.push(`    ${item.key.replace(/^element-/, "")}:`);
+        outLines.push(`      ${pick}: ${val}`);
+      } else if(item.type === "enchantment"){
+        if(!enchantCfg.enabled) continue;
+        let level;
+        if(enchantCfg.mode === "fixed") level = Math.max(1, enchantCfg.fixed);
+        else {
+          const lo = Math.min(enchantCfg.min, enchantCfg.max);
+          const hi = Math.max(enchantCfg.min, enchantCfg.max);
+          level = Math.floor(Math.random()*(hi-lo+1))+lo;
+        }
+        enchMap[item.key] = level;
+      } else if(item.type === "perm"){
+        if(!permCfg.enabled) continue;
+        let val;
+        if(permCfg.mode === 'fixed') val = permCfg.fixed;
+        else { const lo = Math.min(permCfg.min, permCfg.max); const hi = Math.max(permCfg.min, permCfg.max); val = Math.floor(Math.random()*(hi-lo+1))+lo; }
+        permMap[item.key] = val;
+      } else {
+        const baseVal = rand(...tierRange.b);
+        const scaleVal = rand(...tierRange.s);
+        outLines.push(`  ${item.key}:`);
+        outLines.push(`    base: ${baseVal}`);
+        outLines.push(`    scale: ${scaleVal}`);
+        outLines.push(`    spread: ${tierRange.sp}`);
+        outLines.push(`    max-spread: ${tierRange.m}`);
+      }
+    }
+
+    if(Object.keys(enchMap).length){
+      outLines.push(`  enchants:`);
+      for(const k of Object.keys(enchMap)){
+        outLines.push(`    ${k}: ${enchMap[k]}.0`);
+      }
+    }
+
+    if(Object.keys(permMap).length){
+      outLines.push(`  perm-effects:`);
+      for(const k of Object.keys(permMap)){
+        outLines.push(`    ${k}: ${permMap[k]}.0`);
+      }
+    }
+
+    outLines.push("");
+  }
+
+  preview.value = outLines.join("\n");
+});
+
+/* ================= download preview ================= */
+downloadBtn.addEventListener("click", ()=>{
+  const blob = new Blob([preview.value], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "gemstones.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* initial render + wiring */
+renderChecklist();
+updateGlobalCounter();
+
+toggleTierMode = function(){
+  if(customToggle.checked){
+    presetPanel.style.display = 'none';
+    customPanel.style.display = '';
+  } else {
+    presetPanel.style.display = '';
+    customPanel.style.display = 'none';
+  }
+};
+document.getElementById('presetToggle').addEventListener('change', toggleTierMode);
+document.getElementById('customToggle').addEventListener('change', toggleTierMode);
+toggleTierMode();
+
+// init success UI visibility
+if(successMode.value === 'fixed'){
+  lblSuccessFixed.style.display = '';
+  lblSuccessMin.style.display = 'none';
+  lblSuccessMax.style.display = 'none';
+} else {
+  lblSuccessFixed.style.display = 'none';
+  lblSuccessMin.style.display = '';
+  lblSuccessMax.style.display = '';
+}
+</script>
+</body>
+</html>
