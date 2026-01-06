@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8" />
-<title>💎 Gemstone Generator – Displayname & Roman Numeral</title>
+<title>💎 Gemstone Generator</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
 :root{
@@ -45,7 +45,7 @@ input[type="text"], input[type="number"], select, textarea{
   color:inherit;
   font-size:14px;
 }
-textarea{min-height:300px;font-family:monospace}
+textarea{min-height:300px;font-family:monospace;white-space:pre}
 button{cursor:pointer}
 button.primary{
   padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-2),#22d3ee);color:#022023;font-weight:700;
@@ -147,7 +147,7 @@ button.primary{
       <div>
         <label for="gemColor">Gem Color (gem-color)</label>
         <input id="gemColor" placeholder="Blue / Heroic" type="text" />
-        <div class="small-note">Nilai akan ditulis ke 'gem-color' di output</div>
+        <div class="small-note">Nilai akan ditulis ke 'gem-color' di output (untuk ID dan key)</div>
       </div>
 
       <div>
@@ -166,17 +166,16 @@ button.primary{
         <input id="cmd" type="number" placeholder="Opsional" />
       </div>
 
-      <!-- Displayname controls -->
       <div>
         <label for="displayColor">Display Color Code (chat code)</label>
-        <input id="displayColor" type="text" value="&amp;b" placeholder="e.g. &amp;b, &ampc, &amp6" />
+        <input id="displayColor" type="text" value="&amp;b" placeholder="e.g. &amp;b, &amp;c, &amp;6" />
         <div class="small-note">Masukkan kode chat Minecraft (gunakan &amp; sebelum kode, contoh: &amp;b)</div>
       </div>
 
       <div>
         <label for="displayText">Display Text (without roman)</label>
         <input id="displayText" type="text" value="Gemstone" placeholder="Teks dasar displayname" />
-        <div class="small-note">Contoh: "Gemstone" → hasil: &amp;bGemstone I</div>
+        <div class="small-note">Contoh: "Gemstone" → hasil: &amp;bGemstone I (jika Roman aktif)</div>
       </div>
 
       <div style="align-self:center;">
@@ -339,7 +338,7 @@ const ATTRIBUTE_GROUPS = {
     "protection","feather-falling","projectile-protection","respiration",
     "aqua-affinity","thorns","depth-strider","frost-walker"
   ],
-  "Perm-Effects": [
+  PermEffects: [
     "ABSORPTION","BAD_OMEN","CONDUIT_POWER","DOLPHINS_GRACE","FIRE_RESISTANCE",
     "GLOWING","HASTE","HEALTH_BOOST","HERO_OF_THE_VILLAGE","INSTANT_HEALTH",
     "JUMP_BOOST","LUCK","NIGHT_VISION","REGENERATION","RESISTANCE",
@@ -357,20 +356,24 @@ const PRESET_TIERS = {
 const ELEMENT_SUB = ["damage","damage-percent","weakness","defense","defense-percent"];
 const rand = (a,b)=>+(Math.random()*(b-a)+a).toFixed(2);
 
-/* convert integer to Roman (supports up to 3999) */
+/* helper */
 function intToRoman(num){
   if(num <= 0) return "";
-  const vals = [
-    [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
+  const vals = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
     [100,'C'],[90,'XC'],[50,'L'],[40,'XL'],
-    [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
-  ];
-  let res = "";
-  let n = num;
-  for(const [v, sym] of vals){
-    while(n >= v){ res += sym; n -= v; }
-  }
+    [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let res=""; let n=num;
+  for(const [v,s] of vals){ while(n>=v){res+=s; n-=v;} }
   return res;
+}
+function prettyNameFromAdditional(key){
+  const tail = key.replace(/^additional-/, "");
+  return tail.split('-').map(p => p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
+}
+function fmtNum(val){
+  const n = parseFloat(val);
+  if(Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
 }
 
 /* DOM refs */
@@ -414,7 +417,6 @@ const disableSmith = document.getElementById("disableSmith");
 const disableEnchant = document.getElementById("disableEnchant");
 const disableRepair = document.getElementById("disableRepair");
 
-// success rate controls
 const successMode = document.getElementById('successMode');
 const successFixed = document.getElementById('successFixed');
 const successMin = document.getElementById('successMin');
@@ -423,118 +425,53 @@ const lblSuccessFixed = document.getElementById('lblSuccessFixed');
 const lblSuccessMin = document.getElementById('lblSuccessMin');
 const lblSuccessMax = document.getElementById('lblSuccessMax');
 
-/* ================= RENDER GROUPS (menu appended to body to avoid clipping) */
-function createMenuButton(){
-  const btn = document.createElement("button");
-  btn.className = "menu-btn";
-  btn.type = "button";
-  btn.textContent = "⋯";
-  return btn;
-}
+/* ================= RENDER GROUPS ================= */
+function createMenuButton(){ const btn = document.createElement("button"); btn.className="menu-btn"; btn.type="button"; btn.textContent="⋯"; return btn; }
 
 function buildGroupDom(title, list, prefix){
-  const group = document.createElement("div");
-  group.className = "check-group";
-
-  const header = document.createElement("div");
-  header.className = "check-group-header";
-
-  const left = document.createElement("div");
-  left.className = "group-left";
-  const titleNode = document.createElement("div");
-  titleNode.className = "group-title";
-  titleNode.textContent = `${title} (${list.length})`;
-  left.appendChild(titleNode);
-
-  header.appendChild(left);
-
-  const controls = document.createElement("div");
-  controls.className = "group-controls";
-
-  const btn = createMenuButton();
-  controls.appendChild(btn);
-
-  btn.addEventListener('click', (ev)=>{
-    ev.stopPropagation();
-    openBodyMenuForButton(btn, group);
-  });
-
+  const group = document.createElement("div"); group.className="check-group";
+  const header = document.createElement("div"); header.className="check-group-header";
+  const left = document.createElement("div"); left.className="group-left";
+  const titleNode = document.createElement("div"); titleNode.className="group-title"; titleNode.textContent=`${title} (${list.length})`;
+  left.appendChild(titleNode); header.appendChild(left);
+  const controls = document.createElement("div"); controls.className="group-controls";
+  const btn = createMenuButton(); controls.appendChild(btn);
+  btn.addEventListener('click',(ev)=>{ ev.stopPropagation(); openBodyMenuForButton(btn, group); });
   header.appendChild(controls);
-
-  header.addEventListener('click', (e)=>{
-    // click header toggles collapse (but menu button has its own handler)
-    if(e.target === btn) return;
-    group.classList.toggle('collapsed');
-  });
-
+  header.addEventListener('click',(e)=>{ if(e.target === btn) return; group.classList.toggle('collapsed'); });
   group.appendChild(header);
 
-  const body = document.createElement("div");
-  body.className = "check-group-body";
-
-  const grid = document.createElement("div");
-  grid.className = "check-grid";
+  const body = document.createElement("div"); body.className = "check-group-body";
+  const grid = document.createElement("div"); grid.className = "check-grid";
 
   list.forEach(key=>{
-    const cbCell = document.createElement("div");
-    cbCell.className = "checkbox";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = true;
-    cb.className = "attr-cbx";
-    cb.dataset.key = key;
-    cb.dataset.type = prefix;
-    cbCell.appendChild(cb);
+    const cbCell = document.createElement("div"); cbCell.className = "checkbox";
+    const cb = document.createElement("input"); cb.type="checkbox"; cb.checked=true; cb.className="attr-cbx";
+    cb.dataset.key = key; cb.dataset.type = prefix; cbCell.appendChild(cb);
 
-    const nameCell = document.createElement("div");
-    nameCell.className = "attr-name";
-    nameCell.textContent = key;
+    const nameCell = document.createElement("div"); nameCell.className="attr-name"; nameCell.textContent = key;
 
-    const lockCell = document.createElement("div");
-    lockCell.className = "attr-lock";
-    const lockLabel = document.createElement("label");
-    lockLabel.style.fontSize = "12px";
-    const lockCb = document.createElement("input");
-    lockCb.type = "checkbox";
-    lockCb.className = "lock-cbx";
-    lockCb.dataset.lock = key;
-    lockLabel.appendChild(lockCb);
-    lockLabel.appendChild(document.createTextNode("lock"));
-    lockCell.appendChild(lockLabel);
+    const lockCell = document.createElement("div"); lockCell.className = "attr-lock";
+    const lockLabel = document.createElement("label"); lockLabel.style.fontSize="12px";
+    const lockCb = document.createElement("input"); lockCb.type="checkbox"; lockCb.className="lock-cbx"; lockCb.dataset.lock=key;
+    lockLabel.appendChild(lockCb); lockLabel.appendChild(document.createTextNode("lock")); lockCell.appendChild(lockLabel);
 
-    grid.appendChild(cbCell);
-    grid.appendChild(nameCell);
-    grid.appendChild(lockCell);
+    grid.appendChild(cbCell); grid.appendChild(nameCell); grid.appendChild(lockCell);
 
-    // element has sub-attributes
     if(prefix === "element"){
-      const subBlock = document.createElement("div");
-      subBlock.className = "substats";
-      const elName = key.replace(/^element-/, "");
-      const h5 = document.createElement("h5");
-      h5.textContent = `Sub-attributes for ${elName} (optional)`;
-      subBlock.appendChild(h5);
-
-      const subGrid = document.createElement("div");
-      subGrid.className = "substats-grid";
-
+      const subBlock = document.createElement("div"); subBlock.className="substats";
+      const elName = key.replace(/^element-/, ""); const h5 = document.createElement("h5");
+      h5.textContent = `Sub-attributes for ${elName} (optional)`; subBlock.appendChild(h5);
+      const subGrid = document.createElement("div"); subGrid.className="substats-grid";
       ELEMENT_SUB.forEach(sub=>{
         const lbl = document.createElement("label");
-        const sCb = document.createElement("input");
-        sCb.type = "checkbox";
-        sCb.checked = true;
-        sCb.className = "sub-cbx";
-        sCb.dataset.el = key;
-        sCb.dataset.sub = sub;
-        lbl.appendChild(sCb);
-        lbl.appendChild(document.createTextNode(sub));
+        const sCb = document.createElement("input"); sCb.type="checkbox"; sCb.checked=true; sCb.className="sub-cbx";
+        sCb.dataset.el = key; sCb.dataset.sub = sub;
+        lbl.appendChild(sCb); lbl.appendChild(document.createTextNode(sub));
         subGrid.appendChild(lbl);
       });
-
       subBlock.appendChild(subGrid);
-      const subWrapper = document.createElement("div");
-      subWrapper.style.gridColumn = "1 / -1";
-      subWrapper.appendChild(subBlock);
+      const subWrapper = document.createElement("div"); subWrapper.style.gridColumn="1 / -1"; subWrapper.appendChild(subBlock);
       grid.appendChild(subWrapper);
     }
   });
@@ -542,8 +479,7 @@ function buildGroupDom(title, list, prefix){
   body.appendChild(grid);
 
   if(prefix === "enchantment"){
-    const cfg = document.createElement("div");
-    cfg.className = "enchant-config";
+    const cfg = document.createElement("div"); cfg.className="enchant-config";
     cfg.innerHTML = `
       <label style="display:flex;align-items:center;gap:8px"><input id="enchantToggleInline" type="checkbox" checked /> Enable Enchantments</label>
       <label style="display:flex;align-items:center;gap:8px">Mode:
@@ -560,8 +496,7 @@ function buildGroupDom(title, list, prefix){
   }
 
   if(prefix === "perm"){
-    const pcfg = document.createElement("div");
-    pcfg.className = "perm-config";
+    const pcfg = document.createElement("div"); pcfg.className="perm-config";
     pcfg.innerHTML = `
       <label style="display:flex;align-items:center;gap:8px"><input id="permToggleInline" type="checkbox" checked /> Enable Perm Effects</label>
       <label style="display:flex;align-items:center;gap:8px">Mode:
@@ -583,8 +518,7 @@ function buildGroupDom(title, list, prefix){
 
 function openBodyMenuForButton(btn, group){
   document.querySelectorAll('.body-menu').forEach(m=>m.remove());
-  const menu = document.createElement('div');
-  menu.className = 'body-menu';
+  const menu = document.createElement('div'); menu.className='body-menu';
   menu.innerHTML = `
     <button data-action="expand">Expand</button>
     <button data-action="collapse">Collapse</button>
@@ -592,135 +526,73 @@ function openBodyMenuForButton(btn, group){
     <button data-action="clear">Clear group</button>
   `;
   document.body.appendChild(menu);
-
-  const rect = btn.getBoundingClientRect();
-  const menuWidth = 180;
+  const rect = btn.getBoundingClientRect(); const menuWidth = 180;
   let left = rect.left + window.scrollX;
-  if(left + menuWidth > window.scrollX + window.innerWidth) {
-    left = (window.scrollX + window.innerWidth) - menuWidth - 12;
-  }
+  if(left + menuWidth > window.scrollX + window.innerWidth) left = (window.scrollX + window.innerWidth) - menuWidth - 12;
   let top = rect.bottom + window.scrollY + 6;
-  menu.style.left = left + 'px';
-  menu.style.top = top + 'px';
-  menu.style.minWidth = menuWidth + 'px';
+  menu.style.left = left + 'px'; menu.style.top = top + 'px'; menu.style.minWidth = menuWidth + 'px';
 
-  menu.addEventListener('click', (e)=>{
+  menu.addEventListener('click',(e)=>{
     const action = e.target.dataset.action;
     if(!action) return;
     if(action === 'expand') group.classList.remove('collapsed');
     if(action === 'collapse') group.classList.add('collapsed');
     if(action === 'select') group.querySelectorAll('input.attr-cbx').forEach(cb=>cb.checked=true);
     if(action === 'clear') group.querySelectorAll('input.attr-cbx').forEach(cb=>cb.checked=false);
-    menu.remove();
-    updateGlobalCounter();
+    menu.remove(); updateGlobalCounter();
   });
 
-  setTimeout(()=>{
-    const closeFn = (ev)=>{
-      if(!menu.contains(ev.target) && ev.target !== btn) {
-        menu.remove(); document.removeEventListener('click', closeFn);
-      }
-    };
-    document.addEventListener('click', closeFn);
-  }, 0);
+  setTimeout(()=>{ const closeFn = (ev)=>{ if(!menu.contains(ev.target) && ev.target !== btn){ menu.remove(); document.removeEventListener('click', closeFn); } }; document.addEventListener('click', closeFn); }, 0);
 }
 
 function renderChecklist(filter=""){
   checkPanel.innerHTML = "";
-  ["Damage","Defense","Utility","Element","Enchantment","Perm-Effects"].forEach(groupName=>{
+  ["Damage","Defense","Utility","Element","Enchantment","PermEffects"].forEach(groupName=>{
     const list = (ATTRIBUTE_GROUPS[groupName] || []).filter(k=>k.toLowerCase().includes(filter.toLowerCase()));
     if(list.length === 0) return;
-    const dom = buildGroupDom(groupName, list, groupName === "Perm-Effects" ? "perm" : groupName.toLowerCase());
+    const dom = buildGroupDom(groupName, list, groupName === "PermEffects" ? "perm" : groupName.toLowerCase());
     if(groupName !== "Damage") dom.classList.add("collapsed");
     checkPanel.appendChild(dom);
   });
-  wireEnchantInline();
-  wirePermInline();
-  updateGlobalCounter();
+  wireEnchantInline(); wirePermInline(); updateGlobalCounter();
 }
 
-function wireEnchantInline(){
+function wireEnchantInline(){ /* same logic */ 
   const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
-    const t = dom.querySelector('.group-title');
-    return t && t.textContent && t.textContent.startsWith("Enchantment");
+    const t = dom.querySelector('.group-title'); return t && t.textContent && t.textContent.startsWith("Enchantment");
   });
   if(!g) return;
-  const toggle = g.querySelector('#enchantToggleInline');
-  const modeSel = g.querySelector('#enchantModeInline');
-  const fixedInp = g.querySelector('#enchantFixedInline');
-  const minInp = g.querySelector('#enchantMinInline');
-  const maxInp = g.querySelector('#enchantMaxInline');
-  const lblFixed = g.querySelector('#lblFixedInline');
-  const lblMin = g.querySelector('#lblMinInline');
-  const lblMax = g.querySelector('#lblMaxInline');
-
-  function update(){
-    const enabled = !!toggle.checked;
-    g.querySelectorAll('input.attr-cbx').forEach(cb=>{
-      cb.disabled = !enabled;
-    });
+  const toggle = g.querySelector('#enchantToggleInline'); const modeSel = g.querySelector('#enchantModeInline');
+  const fixedInp = g.querySelector('#enchantFixedInline'); const minInp = g.querySelector('#enchantMinInline'); const maxInp = g.querySelector('#enchantMaxInline');
+  const lblFixed = g.querySelector('#lblFixedInline'); const lblMin = g.querySelector('#lblMinInline'); const lblMax = g.querySelector('#lblMaxInline');
+  function update(){ const enabled = !!toggle.checked;
+    g.querySelectorAll('input.attr-cbx').forEach(cb=>{ cb.disabled = !enabled; });
     g.style.opacity = enabled ? '1' : '0.55';
-    if(modeSel.value === 'fixed'){
-      lblFixed.style.display = '';
-      lblMin.style.display = 'none';
-      lblMax.style.display = 'none';
-    } else {
-      lblFixed.style.display = 'none';
-      lblMin.style.display = '';
-      lblMax.style.display = '';
-    }
-    fixedInp.disabled = !enabled;
-    minInp.disabled = !enabled;
-    maxInp.disabled = !enabled;
-    modeSel.disabled = !enabled;
+    if(modeSel.value === 'fixed'){ lblFixed.style.display = ''; lblMin.style.display = 'none'; lblMax.style.display = 'none'; }
+    else { lblFixed.style.display = 'none'; lblMin.style.display = ''; lblMax.style.display = ''; }
+    fixedInp.disabled = !enabled; minInp.disabled = !enabled; maxInp.disabled = !enabled; modeSel.disabled = !enabled;
     updateGlobalCounter();
   }
-
-  toggle.addEventListener('change', update);
-  modeSel.addEventListener('change', update);
-  update();
+  toggle.addEventListener('change', update); modeSel.addEventListener('change', update); update();
 }
 
 function wirePermInline(){
   const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
-    const t = dom.querySelector('.group-title');
-    return t && t.textContent && t.textContent.startsWith("Perm-Effects");
+    const t = dom.querySelector('.group-title'); return t && t.textContent && t.textContent.startsWith("Perm");
   });
   if(!g) return;
-  const toggle = g.querySelector('#permToggleInline');
-  const modeSel = g.querySelector('#permModeInline');
-  const fixedInp = g.querySelector('#permFixedInline');
-  const minInp = g.querySelector('#permMinInline');
-  const maxInp = g.querySelector('#permMaxInline');
-  const lblFixed = g.querySelector('#lblPermFixed');
-  const lblMin = g.querySelector('#lblPermMin');
-  const lblMax = g.querySelector('#lblPermMax');
-
-  function update(){
-    const enabled = !!toggle.checked;
-    g.querySelectorAll('input.attr-cbx').forEach(cb=>{
-      cb.disabled = !enabled;
-    });
+  const toggle = g.querySelector('#permToggleInline'); const modeSel = g.querySelector('#permModeInline');
+  const fixedInp = g.querySelector('#permFixedInline'); const minInp = g.querySelector('#permMinInline'); const maxInp = g.querySelector('#permMaxInline');
+  const lblFixed = g.querySelector('#lblPermFixed'); const lblMin = g.querySelector('#lblPermMin'); const lblMax = g.querySelector('#lblPermMax');
+  function update(){ const enabled = !!toggle.checked;
+    g.querySelectorAll('input.attr-cbx').forEach(cb=>{ cb.disabled = !enabled; });
     g.style.opacity = enabled ? '1' : '0.55';
-    if(modeSel.value === 'fixed'){
-      lblFixed.style.display = '';
-      lblMin.style.display = 'none';
-      lblMax.style.display = 'none';
-    } else {
-      lblFixed.style.display = 'none';
-      lblMin.style.display = '';
-      lblMax.style.display = '';
-    }
-    fixedInp.disabled = !enabled;
-    minInp.disabled = !enabled;
-    maxInp.disabled = !enabled;
-    modeSel.disabled = !enabled;
+    if(modeSel.value === 'fixed'){ lblFixed.style.display = ''; lblMin.style.display = 'none'; lblMax.style.display = 'none'; }
+    else { lblFixed.style.display = 'none'; lblMin.style.display = ''; lblMax.style.display = ''; }
+    fixedInp.disabled = !enabled; minInp.disabled = !enabled; maxInp.disabled = !enabled; modeSel.disabled = !enabled;
     updateGlobalCounter();
   }
-
-  toggle.addEventListener('change', update);
-  modeSel.addEventListener('change', update);
-  update();
+  toggle.addEventListener('change', update); modeSel.addEventListener('change', update); update();
 }
 
 /* ================= COUNTER & BUTTONS ================= */
@@ -731,58 +603,26 @@ function updateGlobalCounter(){
 }
 document.addEventListener("change", updateGlobalCounter);
 
-btnSelectAll.addEventListener("click", ()=>{
-  document.querySelectorAll('#checkPanel input.attr-cbx').forEach(cb=> { cb.checked = true; cb.disabled = false; });
-  updateGlobalCounter();
-});
-btnClearAll.addEventListener("click", ()=>{
-  document.querySelectorAll('#checkPanel input.attr-cbx').forEach(cb=>cb.checked=false);
-  document.querySelectorAll('#checkPanel input.lock-cbx').forEach(cb=>cb.checked=false);
-  updateGlobalCounter();
-});
+btnSelectAll.addEventListener("click", ()=>{ document.querySelectorAll('#checkPanel input.attr-cbx').forEach(cb=> { cb.checked = true; cb.disabled = false; }); updateGlobalCounter(); });
+btnClearAll.addEventListener("click", ()=>{ document.querySelectorAll('#checkPanel input.attr-cbx').forEach(cb=>cb.checked=false); document.querySelectorAll('#checkPanel input.lock-cbx').forEach(cb=>cb.checked=false); updateGlobalCounter(); });
 
 searchInput.addEventListener("input", ()=> renderChecklist(searchInput.value));
 
 /* ================= Tier UI ================= */
-function toggleTierMode(){
-  if(customToggle.checked){
-    presetPanel.style.display = 'none';
-    customPanel.style.display = '';
-  } else {
-    presetPanel.style.display = '';
-    customPanel.style.display = 'none';
-  }
-}
-presetToggle.addEventListener('change', toggleTierMode);
-customToggle.addEventListener('change', toggleTierMode);
+function toggleTierMode(){ if(customToggle.checked){ presetPanel.style.display='none'; customPanel.style.display=''; } else { presetPanel.style.display=''; customPanel.style.display='none'; } }
+presetToggle.addEventListener('change', toggleTierMode); customToggle.addEventListener('change', toggleTierMode);
 
-function renderTierInfo(){
-  const t = PRESET_TIERS[tierSelect.value];
-  tierInfo.textContent = `Preset Tier ${tierSelect.value} → Base ${t.b[0]}–${t.b[1]} | Scale ${t.s[0]}–${t.s[1]} | Spread ${t.sp} | Max ${t.m}`;
-}
-tierSelect.addEventListener("change", renderTierInfo);
-renderTierInfo();
+function renderTierInfo(){ const t = PRESET_TIERS[tierSelect.value]; tierInfo.textContent = `Preset Tier ${tierSelect.value} → Base ${t.b[0]}–${t.b[1]} | Scale ${t.s[0]}–${t.s[1]} | Spread ${t.sp} | Max ${t.m}`; }
+tierSelect.addEventListener("change", renderTierInfo); renderTierInfo();
 
-/* success rate UI wiring */
-successMode.addEventListener('change', ()=>{
-  if(successMode.value === 'fixed'){
-    lblSuccessFixed.style.display = '';
-    lblSuccessMin.style.display = 'none';
-    lblSuccessMax.style.display = 'none';
-  } else {
-    lblSuccessFixed.style.display = 'none';
-    lblSuccessMin.style.display = '';
-    lblSuccessMax.style.display = '';
-  }
-});
+successMode.addEventListener('change', ()=>{ if(successMode.value === 'fixed'){ lblSuccessFixed.style.display=''; lblSuccessMin.style.display='none'; lblSuccessMax.style.display='none'; } else { lblSuccessFixed.style.display='none'; lblSuccessMin.style.display=''; lblSuccessMax.style.display=''; } });
 
-/* ================= GENERATE (perms config + success rate + displayname) ================= */
+/* ================= GENERATE (with improved lore formatting for additional-*) ================= */
 function getSelectedPool(){
-  const items = [];
+  const items=[];
   document.querySelectorAll('#checkPanel .check-group').forEach(group=>{
     group.querySelectorAll('input.attr-cbx').forEach(cb=>{
-      const key = cb.dataset.key;
-      const type = cb.dataset.type;
+      const key = cb.dataset.key; const type = cb.dataset.type;
       const lockCb = group.querySelector(`input.lock-cbx[data-lock="${key}"]`);
       const locked = lockCb ? lockCb.checked : false;
       if(cb.checked) items.push({type, key, locked});
@@ -792,61 +632,38 @@ function getSelectedPool(){
 }
 
 function readEnchantConfigInline(){
-  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
-    const t = dom.querySelector('.group-title');
-    return t && t.textContent && t.textContent.startsWith("Enchantment");
-  });
+  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{ const t = dom.querySelector('.group-title'); return t && t.textContent && t.textContent.startsWith("Enchantment"); });
   if(!g) return {enabled:false};
-  const toggle = g.querySelector('#enchantToggleInline');
-  if(!toggle) return {enabled:false};
-  const enabled = !!toggle.checked;
-  const mode = g.querySelector('#enchantModeInline').value;
-  const fixed = parseInt(g.querySelector('#enchantFixedInline').value || 1);
-  const min = parseInt(g.querySelector('#enchantMinInline').value || 1);
+  const toggle = g.querySelector('#enchantToggleInline'); if(!toggle) return {enabled:false};
+  const enabled = !!toggle.checked; const mode = g.querySelector('#enchantModeInline').value;
+  const fixed = parseInt(g.querySelector('#enchantFixedInline').value || 1); const min = parseInt(g.querySelector('#enchantMinInline').value || 1);
   const max = parseInt(g.querySelector('#enchantMaxInline').value || min);
   return {enabled, mode, fixed, min, max};
 }
-
 function readPermConfigInline(){
-  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{
-    const t = dom.querySelector('.group-title');
-    return t && t.textContent && t.textContent.startsWith("Perm-Effects");
-  });
+  const g = [...checkPanel.querySelectorAll('.check-group')].find(dom=>{ const t = dom.querySelector('.group-title'); return t && t.textContent && t.textContent.startsWith("Perm"); });
   if(!g) return {enabled:false};
-  const toggle = g.querySelector('#permToggleInline');
-  if(!toggle) return {enabled:false};
-  const enabled = !!toggle.checked;
-  const mode = g.querySelector('#permModeInline').value;
-  const fixed = parseFloat(g.querySelector('#permFixedInline').value || 1);
-  const min = parseFloat(g.querySelector('#permMinInline').value || 1);
+  const toggle = g.querySelector('#permToggleInline'); if(!toggle) return {enabled:false};
+  const enabled = !!toggle.checked; const mode = g.querySelector('#permModeInline').value;
+  const fixed = parseFloat(g.querySelector('#permFixedInline').value || 1); const min = parseFloat(g.querySelector('#permMinInline').value || 1);
   const max = parseFloat(g.querySelector('#permMaxInline').value || min);
   return {enabled, mode, fixed, min, max};
 }
-
 function getSuccessRateValue(){
-  if(successMode.value === 'fixed'){
-    return parseFloat(successFixed.value || 0);
-  } else {
-    const lo = parseFloat(successMin.value || 0);
-    const hi = parseFloat(successMax.value || lo);
-    return +(Math.random()*(hi-lo)+lo).toFixed(2);
-  }
+  if(successMode.value === 'fixed') return parseFloat(successFixed.value || 0);
+  const lo = parseFloat(successMin.value || 0); const hi = parseFloat(successMax.value || lo);
+  return +(Math.random()*(hi-lo)+lo).toFixed(2);
 }
 
 genBtn.addEventListener("click", ()=>{
-  // select tier ranges
+  // tier range
   let tierRange;
   if(customToggle.checked){
-    const bmin = Math.max(0, parseFloat(baseMin.value || 0));
-    const bmax = Math.max(bmin, parseFloat(baseMax.value || bmin));
-    const smin = Math.max(0, parseFloat(scaleMin.value || 0));
-    const smax = Math.max(smin, parseFloat(scaleMax.value || smin));
-    const sp = Math.max(0, parseFloat(spread.value || 0));
-    const ms = Math.max(0, parseFloat(maxSpread.value || 0));
+    const bmin = Math.max(0, parseFloat(baseMin.value || 0)); const bmax = Math.max(bmin, parseFloat(baseMax.value || bmin));
+    const smin = Math.max(0, parseFloat(scaleMin.value || 0)); const smax = Math.max(smin, parseFloat(scaleMax.value || smin));
+    const sp = Math.max(0, parseFloat(spread.value || 0)); const ms = Math.max(0, parseFloat(maxSpread.value || 0));
     tierRange = {b:[bmin,bmax], s:[smin,smax], sp, m:ms};
-  } else {
-    tierRange = PRESET_TIERS[tierSelect.value];
-  }
+  } else tierRange = PRESET_TIERS[tierSelect.value];
 
   const selectedPool = getSelectedPool();
   const locked = selectedPool.filter(x=>x.locked);
@@ -855,7 +672,7 @@ genBtn.addEventListener("click", ()=>{
   const totalSlots = Math.max(1, Math.min(95, parseInt(slotsInput.value || 5)));
   const outLines = [];
   const rawColor = (gemColorInput.value || "Gem").trim();
-  const gm = rawColor ? rawColor.replace(/\s+/g,'_') : "Gem";
+  const gm = rawColor ? rawColor.replace(/\s+/g,'_').toUpperCase() : "GEM";
   const mat = materialInput.value || "EMERALD";
   const model = cmdInput.value ? parseInt(cmdInput.value) : null;
   const count = Math.max(1, parseInt(amountInput.value || 1));
@@ -863,93 +680,68 @@ genBtn.addEventListener("click", ()=>{
   const enchantCfg = readEnchantConfigInline();
   const permCfg = readPermConfigInline();
 
-  // disable flags from basic UI
-  const df_craft = !!disableCraft.checked;
-  const df_smelt = !!disableSmelt.checked;
-  const df_smith = !!disableSmith.checked;
-  const df_enchant = !!disableEnchant.checked;
-  const df_repair = !!disableRepair.checked;
+  const df_craft = !!disableCraft.checked; const df_smelt = !!disableSmelt.checked; const df_smith = !!disableSmith.checked;
+  const df_enchant = !!disableEnchant.checked; const df_repair = !!disableRepair.checked;
 
-  // displayname configuration
-  const displayColorRaw = (displayColorInput.value || "").trim(); // ex: &b
-  const displayBaseText = (displayTextInput.value || "").trim() || rawColor + " Gemstone";
+  const displayColorRaw = (displayColorInput.value || "").trim();
+  const displayBaseTextInput = (displayTextInput.value || "").trim();
   const appendRoman = !!displayRomanChk.checked;
 
   for(let i=1;i<=count;i++){
-    outLines.push(`${gm}_Gemstone_${i}:`);
-    outLines.push(`  material: ${mat}`);
+    // prepare base-lines and attribute lines; we assemble afterwards so we can inject lore before attributes
+    const baseLines = [];
+    const attrLines = [];
+    const loreEntries = []; // lines for additional-* to go into lore
 
-    // displayname (separate from internal id)
+    // material inside base
+    baseLines.push(`    material: ${mat}`);
+
+    // name inside base (display name) with escaping single quotes
     const roman = appendRoman ? " " + intToRoman(i) : "";
-    // if user prefixed displayColor with &, keep as-is
-    const displaynameStr = `${displayColorRaw}${displayBaseText}${roman}`.trim();
-    if(displaynameStr) outLines.push(`  displayname: ${displaynameStr}`);
+    let displayTextBase = displayBaseTextInput || (rawColor + " Gemstone");
+    let displaynameRaw = (displayColorRaw ? displayColorRaw : "") + (displayTextBase) + roman;
+    const escaped = displaynameRaw.replace(/'/g, "''");
+    baseLines.push(`    name: '${escaped}'`);
 
-    // gem-color (write original user input)
-    if(gemColorInput.value && gemColorInput.value.trim() !== "") {
-      outLines.push(`  gem-color: ${gemColorInput.value.trim()}`);
-    }
+    // gem-color inside base
+    if(gemColorInput.value && gemColorInput.value.trim() !== "") baseLines.push(`    gem-color: ${gemColorInput.value.trim()}`);
 
-    // custom model data
-    if(model) outLines.push(`  custom-model-data: ${model}`);
+    // custom model data inside base
+    if(model) baseLines.push(`    custom-model-data: ${model}`);
 
-    // disable flags
-    outLines.push(`  disable-crafting: ${df_craft}`);
-    outLines.push(`  disable-smelting: ${df_smelt}`);
-    outLines.push(`  disable-smithing: ${df_smith}`);
-    outLines.push(`  disable-enchanting: ${df_enchant}`);
-    outLines.push(`  disable-repairing: ${df_repair}`);
+    // disable flags inside base (include disable-enchanting)
+    baseLines.push(`    disable-crafting: ${df_craft}`);
+    baseLines.push(`    disable-smelting: ${df_smelt}`);
+    baseLines.push(`    disable-smithing: ${df_smith}`);
+    baseLines.push(`    disable-enchanting: ${df_enchant}`); // <- ensured present
+    baseLines.push(`    disable-repairing: ${df_repair}`);
 
-    // success rate (fixed or random per-gem)
+    // success rate inside base
     const successVal = getSuccessRateValue();
-    outLines.push(`  success-rate: ${+successVal.toFixed(2)}`);
+    baseLines.push(`    success-rate: ${+successVal.toFixed(2)}`);
 
-    // choose items: locked prioritized
-    const chosen = [];
-    const used = new Set();
+    // choose items
+    const chosen = []; const used = new Set();
+    for(const L of locked){ if(chosen.length >= totalSlots) break; if(!used.has(L.key)){ chosen.push(L); used.add(L.key); } }
+    for(let j = unlocked.length -1; j>0; j--){ const k = Math.floor(Math.random()*(j+1)); [unlocked[j], unlocked[k]] = [unlocked[k], unlocked[j]]; }
+    for(const U of unlocked){ if(chosen.length >= totalSlots) break; if(!used.has(U.key)){ chosen.push(U); used.add(U.key); } }
 
-    for(const L of locked){
-      if(chosen.length >= totalSlots) break;
-      if(!used.has(L.key)){
-        chosen.push(L);
-        used.add(L.key);
-      }
-    }
-
-    for(let j = unlocked.length -1; j>0; j--){
-      const k = Math.floor(Math.random()*(j+1));
-      [unlocked[j], unlocked[k]] = [unlocked[k], unlocked[j]];
-    }
-    for(const U of unlocked){
-      if(chosen.length >= totalSlots) break;
-      if(!used.has(U.key)){
-        chosen.push(U);
-        used.add(U.key);
-      }
-    }
-
-    const enchMap = {};
-    const permMap = {};
+    const enchMap = {}; const permMap = {};
 
     for(const item of chosen){
       if(item.type === "element"){
-        const subs = [...document.querySelectorAll(`#checkPanel input.sub-cbx[data-el="${item.key}"]`)]
-                      .filter(s=>s.checked).map(s=>s.dataset.sub);
+        const subs = [...document.querySelectorAll(`#checkPanel input.sub-cbx[data-el="${item.key}"]`)].filter(s=>s.checked).map(s=>s.dataset.sub);
         const poolSub = subs.length ? subs : ELEMENT_SUB.slice();
         const pick = poolSub[Math.floor(Math.random()*poolSub.length)];
         const val = rand(...tierRange.b);
-        outLines.push(`  element:`);
-        outLines.push(`    ${item.key.replace(/^element-/, "")}:`);
-        outLines.push(`      ${pick}: ${val}`);
+        attrLines.push(`    element:`);
+        attrLines.push(`      ${item.key.replace(/^element-/, "")}:`);
+        attrLines.push(`        ${pick}: ${val}`);
       } else if(item.type === "enchantment"){
         if(!enchantCfg.enabled) continue;
         let level;
         if(enchantCfg.mode === "fixed") level = Math.max(1, enchantCfg.fixed);
-        else {
-          const lo = Math.min(enchantCfg.min, enchantCfg.max);
-          const hi = Math.max(enchantCfg.min, enchantCfg.max);
-          level = Math.floor(Math.random()*(hi-lo+1))+lo;
-        }
+        else { const lo = Math.min(enchantCfg.min, enchantCfg.max); const hi = Math.max(enchantCfg.min, enchantCfg.max); level = Math.floor(Math.random()*(hi-lo+1))+lo; }
         enchMap[item.key] = level;
       } else if(item.type === "perm"){
         if(!permCfg.enabled) continue;
@@ -958,27 +750,53 @@ genBtn.addEventListener("click", ()=>{
         else { const lo = Math.min(permCfg.min, permCfg.max); const hi = Math.max(permCfg.min, permCfg.max); val = Math.floor(Math.random()*(hi-lo+1))+lo; }
         permMap[item.key] = val;
       } else {
+        // normal numeric attribute (including additional-*)
         const baseVal = rand(...tierRange.b);
         const scaleVal = rand(...tierRange.s);
-        outLines.push(`  ${item.key}:`);
-        outLines.push(`    base: ${baseVal}`);
-        outLines.push(`    scale: ${scaleVal}`);
-        outLines.push(`    spread: ${tierRange.sp}`);
-        outLines.push(`    max-spread: ${tierRange.m}`);
+        attrLines.push(`    ${item.key}:`);
+        attrLines.push(`      base: ${baseVal}`);
+        attrLines.push(`      scale: ${scaleVal}`);
+        attrLines.push(`      spread: ${tierRange.sp}`);
+        attrLines.push(`      max-spread: ${tierRange.m}`);
+
+        // if this is additional-*, also create lore entry (improved format)
+        if(item.key.startsWith("additional-")){
+          const label = prettyNameFromAdditional(item.key); // e.g. "Wisdom"
+          // format lore with minecraft chat color codes and scale info:
+          // &7• &fLabel: &aBase (Scale &fScale&7)
+          const loreStr = `&7• &f${label}: &a${fmtNum(baseVal)} &7(Scale &f${fmtNum(scaleVal)}&7)`;
+          loreEntries.push(loreStr);
+        }
       }
     }
 
+    // assemble lines: ID, base:, baseLines, (optional lore), then attributes, enchants, perms
+    outLines.push(`${gm}_GEMSTONE_${i}:`);
+    outLines.push(`  base:`);
+    baseLines.forEach(l => outLines.push(l));
+
+    if(loreEntries.length){
+      outLines.push(`    lore:`);
+      loreEntries.forEach(le => {
+        const esc = le.replace(/'/g,"''");
+        outLines.push(`      - '${esc}'`);
+      });
+    }
+
+    // append attribute lines
+    attrLines.forEach(l => outLines.push(l));
+
     if(Object.keys(enchMap).length){
-      outLines.push(`  enchants:`);
+      outLines.push(`    enchants:`);
       for(const k of Object.keys(enchMap)){
-        outLines.push(`    ${k}: ${enchMap[k]}.0`);
+        outLines.push(`      ${k}: ${enchMap[k]}.0`);
       }
     }
 
     if(Object.keys(permMap).length){
-      outLines.push(`  perm-effects:`);
+      outLines.push(`    perm-effects:`);
       for(const k of Object.keys(permMap)){
-        outLines.push(`    ${k}: ${permMap[k]}.0`);
+        outLines.push(`      ${k}: ${permMap[k]}.0`);
       }
     }
 
@@ -1028,4 +846,3 @@ if(successMode.value === 'fixed'){
 </script>
 </body>
 </html>
-
